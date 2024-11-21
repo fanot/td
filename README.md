@@ -81,7 +81,7 @@ Input data should be in CSV format with the following columns:
 MIT
 
 ## Authors
-[Your Name]
+[Karina Yanyshevskaya]
 
 ## Acknowledgments
 - TSL (Torch Spatiotemporal) library
