@@ -102,3 +102,23 @@ if __name__ == '__main__':
     output_file_path = 'all_well_averages.csv'
     final_df.to_csv(output_file_path, index=False)
     print(f"All well average data for all properties and radii saved to {output_file_path}")
+
+
+    data_path = 'all_well_averages.csv'
+    additional_data_path = 'data.txt'
+    data_df = pd.read_csv(data_path)
+    additional_data_df = pd.read_csv(additional_data_path, sep='\t')
+
+    # Clean 'Well Name' fields and prepare for merging
+    data_df['Well Name'] = data_df['Well Name'].str.strip("'")
+    additional_data_df.rename(columns={'Объект': 'Well Name'}, inplace=True)
+    additional_data_df = additional_data_df[additional_data_df['Well Name'] != 'Объект']
+
+    # Merge the dataframes on the 'Well Name' column
+    merged_df = pd.merge(data_df, additional_data_df, on='Well Name', how='inner')
+
+    # Save the merged DataFrame to a CSV file
+    output_merged_file_path = 'merged_well_data.csv'
+    merged_df.to_csv(output_merged_file_path, index=False)
+
+    print(f"Merged data saved to {output_merged_file_path}")
