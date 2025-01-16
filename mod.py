@@ -1,40 +1,77 @@
 import pandas as pd
-import ast
-import random
-
-def modify_well_history(df):
-    # Получаем уникальные имена скважин
-    wells = df['Well Name'].unique()
-    
-    # Выбираем случайную половину скважин
-    wells_to_modify = random.sample(list(wells), len(wells)//2)
-    
-    # Для каждой строки в датафрейме
-    for idx, row in df.iterrows():
-        if row['Well Name'] in wells_to_modify:
-            # Для каждой колонки, содержащей списки
-            for col in ['Дебит нефти (И), ст.бр/сут', 'Дебит воды (И), ст.бр/сут', 
-                       'Дебит жидкости (И), ст.бр/сут', 'Забойное давление (И), Фунт-сила / кв.дюйм (абс.)',
-                       'WBP9, Фунт-сила / кв.дюйм (абс.)']:
-                if col in df.columns:
-                    try:
-                        # Преобразуем строку в список
-                        values = ast.literal_eval(row[col])
-                        # Заменяем последнюю треть значений нулями
-                        cut_point = len(values) * 2 // 3
-                        values[cut_point:] = [0.0] * (len(values) - cut_point)
-                        # Обновляем значение в датафрейме
-                        df.at[idx, col] = str(values)
-                    except:
-                        continue
-    
-    return df
+import matplotlib.pyplot as plt
 
 # Чтение файла
-df = pd.read_csv('merged_well_data.csv')
+df = pd.read_csv('updated_merged_well_data.csv')
 
-# Модификация данных
-modified_df = modify_well_history(df)
+# Преобразуем даты в datetime формат
+df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y')
 
-# Сохранение результата
-modified_df.to_csv('modified_merged_well_data.csv', index=False)
+# Определяем временные интервалы для каждой скважины исторической группы
+well_intervals = {
+    'P12': [('2013-01-01', '2014-06-30'), ('2017-01-01', '2018-06-30')],
+    'P14': [('2013-07-01', '2014-12-31'), ('2017-07-01', '2018-12-31')],
+    'P16': [('2014-01-01', '2015-04-30'), ('2018-01-01', '2020-06-30')],
+    'P18': [('2014-07-01', '2015-12-31'), ('2018-07-01', '2019-12-31')],
+    'P20': [('2013-01-01', '2015-01-31'), ('2017-01-01', '2019-01-31')],
+    'P22': [('2013-06-01', '2015-06-30'), ('2017-06-01', '2019-06-30')],
+    'P24': [('2013-12-01', '2015-12-31'), ('2017-12-01', '2019-12-31')]
+}
+
+# Интервал для прогнозной группы
+forecast_start = pd.to_datetime('2018-01-01')
+forecast_end = pd.to_datetime('2020-12-31')
+
+# Списки скважин
+wells_to_zero_history = ['P12', 'P14', 'P16', 'P18', 'P20', 'P22', 'P24']
+wells_to_zero_forecast = ['P13', 'P15', 'P17', 'P19', 'P21', 'P23', 'P25']
+
+pressure_column = 'Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'
+debit_column = 'Дебит нефти (И), ст.бр/сут'
+
+# Обнуляем значения для каждой скважины из исторической группы
+for well in wells_to_zero_history:
+    for period_start, period_end in well_intervals[well]:
+        mask = (
+            (df['Well Name'] == well) & 
+            (df['Дата'] >= pd.to_datetime(period_start)) & 
+            (df['Дата'] <= pd.to_datetime(period_end))
+        )
+        df.loc[mask, pressure_column] = 0
+        df.loc[mask, debit_column] = 0
+
+# Обнуляем значения для прогнозной группы
+for well in wells_to_zero_forecast:
+    mask_forecast = (
+        (df['Well Name'] == well) & 
+        (df['Дата'] >= forecast_start) & 
+        (df['Дата'] <= forecast_end)
+    )
+    df.loc[mask_forecast, pressure_column] = 0
+    df.loc[mask_forecast, debit_column] = 0
+
+# Построение графиков
+plt.figure(figsize=(15, 10))
+
+# Графики для исторической группы
+for well in wells_to_zero_history:
+    well_data = df[df['Well Name'] == well]
+    plt.plot(well_data['Дата'], well_data[pressure_column], 
+             label=f'{well} - История', alpha=0.7)
+
+# Графики для прогнозной группы
+for well in wells_to_zero_forecast:
+    well_data = df[df['Well Name'] == well]
+    plt.plot(well_data['Дата'], well_data[pressure_column], 
+             label=f'{well} - Прогноз', alpha=0.7, linestyle='--')
+
+plt.xlabel('Дата')
+plt.ylabel('Значение')
+plt.title('График обнуленных значений для всех скважин')
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid(True)
+
+# Сохранение графика и результатов
+plt.savefig('zeroed_values_plot.png', dpi=300, bbox_inches='tight')
+df.to_csv('modified_merged_well_data.csv', index=False)
+plt.show()
