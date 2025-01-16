@@ -1,42 +1,4 @@
-def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, radius):
-    well_averages = {}
-    for wname, group in wells_data.groupby('wname'):
-        averages_by_level = [None] * dim_z  # Инициализация списка значений для 9 уровней глубины
-        last_x, last_y = group.iloc[-1]['iw'], group.iloc[-1]['jw']  # Последние координаты из группы
 
-        for z in range(1, dim_z + 1):  # Проход по всем 9 уровням
-            sum_values = 0
-            count = 0
-            level_covered = False  # Флаг покрытия уровня z диапазоном kw1-kw2
-
-            for _, row in group.iterrows():
-                x, y = row['iw'], row['jw']
-                if row['kw1'] <= z < row['kw2']:  # Верхняя граница открыта, kw2 не включается
-                    level_covered = True
-                    for dy in range(max(1, y - radius), min(dim_y + 1, y + radius + 1)):
-                        for dx in range(max(1, x - radius), min(dim_x + 1, x + radius + 1)):
-                            try:
-                                value = get_property_at_coordinates(poro_grid, dx, dy, z, dim_x, dim_y)
-                                sum_values += value
-                                count += 1
-                            except IndexError:
-                                continue
-
-            if not level_covered:  # Если уровень z не покрыт, используем последние координаты x и y
-                for dy in range(max(1, last_y - radius), min(dim_y + 1, last_y + radius + 1)):
-                    for dx in range(max(1, last_x - radius), min(dim_x + 1, last_x + radius + 1)):
-                        try:
-                            value = get_property_at_coordinates(poro_grid, dx, dy, z, dim_x, dim_y)
-                            sum_values += value
-                            count += 1
-                        except IndexError:
-                            continue
-
-            averages_by_level[z - 1] = sum_values / count if count > 0 else None  # Сохраняем среднее или None
-
-        well_averages[wname] = averages_by_level
-
-    return well_averages
 import pandas as pd
 
 def parse_property(property_name, property_path):
@@ -83,7 +45,7 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
             if count > 0:
                 averages_by_level.append(sum_values / count)
             else:
-                averages_by_level.append(None)  # If no data points are found, append None
+                averages_by_level.append(None)  
         well_averages[wname] = averages_by_level
     return well_averages
 
