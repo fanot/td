@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 def parse_property(property_name, property_path):
@@ -27,37 +26,79 @@ def get_property_at_coordinates(grid, x, y, z, dim_x, dim_y):
 
 def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, radius):
     well_averages = {}
-    for index, row in wells_data.iterrows():
-        wname = row['wname']
-        x, y = row['iw'], row['jw']
-        averages_by_level = []
-        for z in range(1, dim_z + 1):  # Fixed range from 1 to dim_z
+    for wname, group in wells_data.groupby('wname'):
+        averages_by_level = [None] * dim_z
+        last_x, last_y = group.iloc[-1]['iw'], group.iloc[-1]['jw']
+
+        for z in range(1, dim_z + 1):
             sum_values = 0
             count = 0
-            for dy in range(max(1, y - radius), min(dim_y + 1, y + radius + 1)):
-                for dx in range(max(1, x - radius), min(dim_x + 1, x + radius + 1)):
-                    try:
-                        value = get_property_at_coordinates(poro_grid, dx, dy, z, dim_x, dim_y)
-                        sum_values += value
-                        count += 1
-                    except IndexError:
-                        continue
-            if count > 0:
-                averages_by_level.append(sum_values / count)
-            else:
-                averages_by_level.append(None)  
+            level_covered = False
+
+            for _, row in group.iterrows():
+                x, y = row['iw'], row['jw']
+                if row['kw1'] <= z < row['kw2']:
+                    level_covered = True
+                    for dy in range(max(1, y - radius), min(dim_y + 1, y + radius + 1)):
+                        for dx in range(max(1, x - radius), min(dim_x + 1, x + radius + 1)):
+                            try:
+                                value = get_property_at_coordinates(poro_grid, dx, dy, z, dim_x, dim_y)
+                                sum_values += value
+                                count += 1
+                            except IndexError:
+                                continue
+
+            if not level_covered:
+                for dy in range(max(1, last_y - radius), min(dim_y + 1, last_y + radius + 1)):
+                    for dx in range(max(1, last_x - radius), min(dim_x + 1, last_x + radius + 1)):
+                        try:
+                            value = get_property_at_coordinates(poro_grid, dx, dy, z, dim_x, dim_y)
+                            sum_values += value
+                            count += 1
+                        except IndexError:
+                            continue
+
+            averages_by_level[z - 1] = sum_values / count if count > 0 else None
+
         well_averages[wname] = averages_by_level
+
     return well_averages
 
 if __name__ == '__main__':
-    property_name = 'PORO' # 
-    property_path = 'Пористость.map'
-    wells_data_path = 'wells_data.csv'
-    dim_x, dim_y, dim_z = 139, 48, 9 
+    properties = {
+        'PORO': 'Пористость.map',
+        'INIT_PERMX': 'Проницаемость_по_X.map',
+        'SOIL': 'map0.txt'
+    }
 
+    wells_data_path = 'wells_data.csv'
+    dim_x, dim_y, dim_z = 139, 48, 9
+    radii = [1, 2, 3]
     wells_data = pd.read_csv(wells_data_path)
-    poro_grid = parse_property(property_name, property_path)
-    
-    radius = 2  
-    well_averages = average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, radius)
-    print(f"Well average porosities for radius {radius}:", well_averages)
+
+    # Dictionary to store data in a structured way before DataFrame creation
+    structured_data = {wname: {prop: [] for prop in properties} for wname in wells_data['wname'].unique()}
+
+    for property_name, property_path in properties.items():
+        property_grid = parse_property(property_name, property_path)
+
+        for radius in radii:
+            well_averages = average_around_well_coordinates(property_grid, wells_data, dim_x, dim_y, dim_z, radius)
+
+            for wname, averages in well_averages.items():
+                structured_data[wname][property_name].append(averages)
+
+    # Creating DataFrame from structured_data
+    final_data = []
+    for wname, props in structured_data.items():
+        well_info = wells_data[wells_data['wname'] == wname].iloc[0]
+        row = {'Well Name': wname, 'Initial X': well_info['iw'], 'Initial Y': well_info['jw']}
+        for prop, arrays in props.items():
+            row[prop] = arrays  # Storing list of lists (three lists of nine values each)
+        final_data.append(row)
+
+    final_df = pd.DataFrame(final_data)
+
+    output_file_path = 'all_well_averages.csv'
+    final_df.to_csv(output_file_path, index=False)
+    print(f"All well average data for all properties and radii saved to {output_file_path}")
