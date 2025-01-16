@@ -37,7 +37,7 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
 
             for _, row in group.iterrows():
                 x, y = row['iw'], row['jw']
-                if row['kw1'] <= z < row['kw2']:
+                if row['kw'] <= z < row['kw']:
                     level_covered = True
                     for dy in range(max(1, y - radius), min(dim_y + 1, y + radius + 1)):
                         for dx in range(max(1, x - radius), min(dim_x + 1, x + radius + 1)):
@@ -66,12 +66,11 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
 
 if __name__ == '__main__':
     properties = {
-        'PORO': 'Пористость.map',
-        'INIT_PERMX': 'Проницаемость_по_X.map',
-        'SOIL': 'map0.txt'
+        'PORO': 'gdm/FY-SF-KM-12-12_Пористость.map',
+        'SOIL': 'gdm/FY-SF-KM-12-12_map_0.txt'
     }
 
-    wells_data_path = 'wells_data.csv'
+    wells_data_path = 'gdm/wells_data.csv'
     dim_x, dim_y, dim_z = 139, 48, 9
     radii = [1, 2, 3]
     wells_data = pd.read_csv(wells_data_path)
@@ -99,14 +98,14 @@ if __name__ == '__main__':
 
     final_df = pd.DataFrame(final_data)
 
-    output_file_path = 'all_well_averages.csv'
-    final_df.to_csv(output_file_path, index=False)
-    print(f"All well average data for all properties and radii saved to {output_file_path}")
+    # output_file_path = 'gdm/FY-SF-KM-12-12.csv'
+    # final_df.to_csv(output_file_path, index=False)
+    # print(f"All well average data for all properties and radii saved to {output_file_path}")
 
 
-    data_path = 'all_well_averages.csv'
-    additional_data_path = 'data.txt'
-    data_df = pd.read_csv(data_path)
+    # data_path = output_file_path
+    additional_data_path = 'gdm/FY-SF-KM-12-12.csv'
+    data_df = final_df
     additional_data_df = pd.read_csv(additional_data_path, sep='\t')
 
     # Clean 'Well Name' fields and prepare for merging
@@ -118,7 +117,7 @@ if __name__ == '__main__':
     merged_df = pd.merge(data_df, additional_data_df, on='Well Name', how='inner')
 
     # Save the merged DataFrame to a CSV file
-    output_merged_file_path = 'merged_well_data.csv'
+    output_merged_file_path = 'train/FY-SF-KM-12-12_merged_well_data.csv'
     merged_df.to_csv(output_merged_file_path, index=False)
 
     print(f"Merged data saved to {output_merged_file_path}")
