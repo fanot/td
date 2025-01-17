@@ -67,7 +67,7 @@ def evaluate_model():
 
 def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_nodes):
     stride = 1
-
+    well_name = 'FY-SF-KP-7-33'
     for node_index in range(num_nodes):
         full_predictions = predictions_rescaled[0]
         full_targets = targets_rescaled[0]
@@ -113,7 +113,7 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
         ax1.plot(dates, full_predictions[:, node_index+2, 0], 'r--', label='Predicted Values')
         ax1.plot(dates, full_targets[:, node_index+2, 0], 'b-', label='Actual Values')
 
-        ax1.set_title(f'Rate for Well {node_index+1} на модели FY-SF-KM-12-12')
+        ax1.set_title(f'Rate for Well {node_index+1}')
         ax1.set_xlabel('Time Steps')
         ax1.set_ylabel('Rate')
         ax1.legend()
@@ -138,7 +138,7 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
         plt.tight_layout()
 
         # Сначала сохраняем
-        plt.savefig(f'FY-SF-KM-12-12/FY-SF-KP-5-31_{node_index+1}_prediction.png')
+        plt.savefig(f'{well_name}/well_name_{node_index+1}_prediction.png')
 
         # Затем показываем
         plt.show()
@@ -148,7 +148,7 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
 
         results_df = pd.DataFrame({
             'Date': dates,
-            'Model': ['FY-SF-KM-12-12'] * len(dates),
+            'Model': [well_name] * len(dates),   
             'Well': [f'Well_{node_index+1}'] * len(dates),
             'Predicted_Rate': full_predictions[:, node_index+2, 0],
             'Actual_Rate': full_targets[:, node_index+2, 0],
@@ -156,7 +156,7 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
         })
 
         # Сохраняем результаты в CSV
-        results_df.to_csv(f'FY-SF-KM-12-12/well_{node_index+1}_predictions.csv', index=False)
+        results_df.to_csv(f'{well_name}/well_{node_index+1}_predictions.csv', index=False)
 
 if __name__ == "__main__":
     predictions_rescaled, targets_rescaled = evaluate_model()
