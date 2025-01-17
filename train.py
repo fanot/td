@@ -31,16 +31,21 @@ class MultiWellTimeSeriesDataset:
         self.date_column = date_column
         self.n_nodes = data[well_column].nunique()
 
-        # Ensure the date column is converted to datetime if not already
-        self.data[self.date_column] = pd.to_datetime(self.data[self.date_column], dayfirst=True)
+        # Modified date parsing with format='mixed' and dayfirst=True
+        self.data[self.date_column] = pd.to_datetime(
+            self.data[self.date_column], 
+            format='mixed',  # Allow mixed date formats
+            dayfirst=True    # Specify that day comes before month
+        )
         self.well_coordinates = data.groupby(well_column)[['Initial X', 'Initial Y']].mean()
 
         # Handle matrix data
         self.data['PORO'] = self.data['PORO'].apply(self.process_matrix_data)
-        self.data['INIT_PERMX'] = self.data['INIT_PERMX'].apply(self.process_matrix_data)
+        # self.data['INIT_PERMX'] = self.data['INIT_PERMX'].apply(self.process_matrix_data)
 
         # Assuming data includes node features as part of the dataset
-        feature_columns = ['SOIL'] + ['PORO', 'INIT_PERMX']
+        # feature_columns = ['SOIL'] + ['PORO', 'INIT_PERMX']
+        feature_columns = ['SOIL'] + ['PORO']
         self.n_channels = len(feature_columns)
 
     def process_matrix_data(self, matrix_str):
@@ -190,7 +195,7 @@ class TimeThenSpaceModel_Transformer(nn.Module):
         x_emb = x_enc + node_emb
         # print(f"Combined embeddings shape: {x_emb.shape}")  # [6, 3, 30, 32]
 
-        # Плоское п��едставление для Transformer
+        # Плоское педставление для Transformer
         x_emb_flat = x_emb.view(x.size(0), -1, x_emb.size(-1))  # [6, 90, 32]
         # print(f"Flattened input to Transformer shape: {x_emb_flat.shape}")
 
@@ -228,7 +233,7 @@ class TimeThenSpaceModel_Transformer(nn.Module):
     
 def create_pipeline():
     # Load and prepare data
-    data_path = 'merged_well_data.csv'
+    data_path = 'train/FN-SS-KP-12-103_merged_well_data.csv'
     data = pd.read_csv(data_path)
     dataset = MultiWellTimeSeriesDataset(data, target_feature='Дебит нефти (И), ст.бр/сут', date_column='Дата')
     
@@ -250,7 +255,7 @@ def create_pipeline():
 
     # Setup data module
     scalers = {'target': StandardScaler(axis=(0, 1))}
-    splitter = TemporalSplitter(val_len=0.15, test_len=0.1)
+    splitter = TemporalSplitter(val_len=0.0, test_len=0.99)
 
     dm = SpatioTemporalDataModule(
         dataset=torch_dataset,
