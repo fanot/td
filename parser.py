@@ -126,7 +126,7 @@ if __name__ == '__main__':
     ) * 6.289811
     # Преобразование забойного давления из бар в psi
     merged_df['Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'] = pd.to_numeric(
-        merged_df['Забойное давление (И), Бара'], errors='coerce'
+        merged_df['Забойное давление, Бара'], errors='coerce'
     ) * 14.5038
     # Save the merged DataFrame to a CSV file
     output_merged_file_path = f'train/{gdm_name}_merged_well_data.csv'
