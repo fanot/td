@@ -65,9 +65,10 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
     return well_averages
 
 if __name__ == '__main__':
+    gdm_name  = 'FN-SS-KP-12-103'
     properties = {
-        'PORO': 'gdm/FY-SF-KM-12-12_Пористость.map',
-        'SOIL': 'gdm/FY-SF-KM-12-12_map_0.txt',
+        'PORO': f'gdm/{gdm_name}_Пористость.map',
+        'SOIL': f'gdm/{gdm_name}_map_0.txt',      
 
     }
 
@@ -105,7 +106,7 @@ if __name__ == '__main__':
 
 
     # data_path = output_file_path
-    additional_data_path = 'gdm/FY-SF-KM-12-12.csv'
+    additional_data_path = f'gdm/{gdm_name}.csv'
     data_df = final_df
     additional_data_df = pd.read_csv(additional_data_path, sep='\t')
 
@@ -113,12 +114,22 @@ if __name__ == '__main__':
     data_df['Well Name'] = data_df['Well Name'].str.strip("'")
     additional_data_df.rename(columns={'Объект': 'Well Name'}, inplace=True)
     additional_data_df = additional_data_df[additional_data_df['Well Name'] != 'Объект']
-
-    # Merge the dataframes on the 'Well Name' column
+   # Merge the dataframes on the 'Well Name' column
     merged_df = pd.merge(data_df, additional_data_df, on='Well Name', how='inner')
+   
+    # oil_rate_dict = dict(zip(additional_data_df['Дата'], pd.to_numeric(additional_data_df['Дебит нефти, ст.м3/сут'], errors='coerce')))
+    # bhp_dict = dict(zip(additional_data_df['Дата'], pd.to_numeric(additional_data_df['Забойное давление (И), Бара'], errors='coerce')))
 
+    # Преобразование дебита нефти из м3/сут в баррели/сут
+    merged_df['Дебит нефти (И), ст.бр/сут'] = pd.to_numeric(
+        merged_df['Дебит нефти, ст.м3/сут'], errors='coerce'
+    ) * 6.289811
+    # Преобразование забойного давления из бар в psi
+    merged_df['Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'] = pd.to_numeric(
+        merged_df['Забойное давление (И), Бара'], errors='coerce'
+    ) * 14.5038
     # Save the merged DataFrame to a CSV file
-    output_merged_file_path = 'train/FY-SF-KM-12-12_merged_well_data.csv'
+    output_merged_file_path = f'train/{gdm_name}_merged_well_data.csv'
     merged_df.to_csv(output_merged_file_path, index=False)
 
     print(f"Merged data saved to {output_merged_file_path}")
