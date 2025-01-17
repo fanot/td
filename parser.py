@@ -65,7 +65,7 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
     return well_averages
 
 if __name__ == '__main__':
-    gdm_name  = 'FN-SS-KP-12-103'
+    gdm_name  = 'FY-SF-KP-7-33'
     properties = {
         'PORO': f'gdm/{gdm_name}_Пористость.map',
         'SOIL': f'gdm/{gdm_name}_map_0.txt',      
