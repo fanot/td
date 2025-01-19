@@ -6,20 +6,35 @@ def parse_property(property_name, property_path):
     with open(property_path, 'r') as file:
         lines = file.read().split('\n')
         for line in lines:
-            if line.strip().lower() == property_name.lower():
+            # Skip comment lines
+            if line.strip().startswith('--'):
+                continue
+                
+            # Start collecting when property name found
+            if line.strip() == property_name:
                 collect_data = True
-            elif collect_data:
+                continue
+                
+            # Stop collecting when '/' found
+            if line.strip() == '/':
+                if collect_data:
+                    break
+                continue
+                
+            if collect_data:
                 if line.strip() == '':
-                    break  # Stop data collection on empty line
+                    continue
                 line_values = [v for v in line.split() if v != '']
                 for value in line_values:
-                    if '*' in value:
-                        count, value = value.split('*')
-                        property_grid.extend([float(value)] * int(count))
-                    else:
-                        property_grid.append(float(value))
+                    try:
+                        if '*' in value:
+                            count, value = value.split('*')
+                            property_grid.extend([float(value)] * int(count))
+                        else:
+                            property_grid.append(float(value))
+                    except ValueError:
+                        continue  # Skip non-numeric values
     return property_grid
-
 def get_property_at_coordinates(grid, x, y, z, dim_x, dim_y):
     index = (x - 1) + (y - 1) * dim_x + (dim_x * dim_y * (z - 1))
     return grid[index]
@@ -65,12 +80,13 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
     return well_averages
 
 if __name__ == '__main__':
-    gdm_name  = 'FY-SF-KP-7-33'
+    gdm_name  = 'FY-SF-KM-1-1'
     properties = {
-        'PORO': f'gdm/{gdm_name}_Пористость.map',
-        'SOIL': f'gdm/{gdm_name}_map_0.txt',      
-
+        'PORO': f'gdm/{gdm_name}.grdecl', 
+        'PERMX': f'gdm/{gdm_name}.grdecl',
+        'SOIL': f'gdm/{gdm_name}_map_0.txt',   
     }
+
 
     wells_data_path = 'gdm/wells_data.csv'
     dim_x, dim_y, dim_z = 139, 48, 9
@@ -100,10 +116,7 @@ if __name__ == '__main__':
 
     final_df = pd.DataFrame(final_data)
 
-    # output_file_path = 'gdm/FY-SF-KM-12-12.csv'
-    # final_df.to_csv(output_file_path, index=False)
-    # print(f"All well average data for all properties and radii saved to {output_file_path}")
-
+  
 
     # data_path = output_file_path
     additional_data_path = f'gdm/{gdm_name}.csv'
@@ -117,9 +130,7 @@ if __name__ == '__main__':
    # Merge the dataframes on the 'Well Name' column
     merged_df = pd.merge(data_df, additional_data_df, on='Well Name', how='inner')
    
-    # oil_rate_dict = dict(zip(additional_data_df['Дата'], pd.to_numeric(additional_data_df['Дебит нефти, ст.м3/сут'], errors='coerce')))
-    # bhp_dict = dict(zip(additional_data_df['Дата'], pd.to_numeric(additional_data_df['Забойное давление (И), Бара'], errors='coerce')))
-
+    
     # Преобразование дебита нефти из м3/сут в баррели/сут
     merged_df['Дебит нефти (И), ст.бр/сут'] = pd.to_numeric(
         merged_df['Дебит нефти, ст.м3/сут'], errors='coerce'
