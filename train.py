@@ -44,8 +44,8 @@ class MultiWellTimeSeriesDataset:
         # self.data['INIT_PERMX'] = self.data['INIT_PERMX'].apply(self.process_matrix_data)
 
         # Assuming data includes node features as part of the dataset
-        # feature_columns = ['SOIL'] + ['PORO', 'INIT_PERMX']
-        feature_columns = ['SOIL'] + ['PORO']
+        feature_columns = ['SOIL'] + ['PORO', 'PERMX']
+        # feature_columns = ['SOIL'] + ['PORO']
         self.n_channels = len(feature_columns)
 
     def process_matrix_data(self, matrix_str):
@@ -233,7 +233,8 @@ class TimeThenSpaceModel_Transformer(nn.Module):
     
 def create_pipeline():
     # Load and prepare data
-    data_path = 'train/FN-SS-KP-12-103_merged_well_data.csv'
+    well = 'FN-SS-KP-12-103'
+    data_path = f'train/{well}_merged_well_data.csv'
     data = pd.read_csv(data_path)
     dataset = MultiWellTimeSeriesDataset(data, target_feature='Дебит нефти (И), ст.бр/сут', date_column='Дата')
     
@@ -278,16 +279,12 @@ def create_pipeline():
     #                        hidden_size=32,
     #                        rnn_layers=1,
     #                        gnn_kernel=2)
-    # Пример инициализации модели
-    input_size = 1
-    n_nodes = 30
-    horizon = 12
+  
     hidden_size = 32
     num_transformer_layers = 2
     transformer_ff_size = 128
     gnn_kernel = 2
     model = TimeThenSpaceModel_Transformer(input_size, n_nodes, horizon, hidden_size, num_transformer_layers, transformer_ff_size, gnn_kernel)
-
 
     # Loss function and metrics
     loss_fn = MaskedMAE()
