@@ -2,7 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Чтение файла
-df = pd.read_csv('updated_merged_well_data.csv')
+well = 'FN-SS-KP-12-103'
+data_path = f'train/{well}_merged_well_data.csv'
+df = pd.read_csv(data_path)
 
 # Преобразуем даты в datetime формат
 df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y')
@@ -23,8 +25,8 @@ forecast_start = pd.to_datetime('2018-01-01')
 forecast_end = pd.to_datetime('2020-12-31')
 
 # Списки скважин
-wells_to_zero_history = ['P12', 'P14', 'P16', 'P18', 'P20', 'P22', 'P24']
-wells_to_zero_forecast = ['P13', 'P15', 'P17', 'P19', 'P21', 'P23', 'P25']
+wells_to_zero_history = ['P12', 'P14', 'P16', 'P18', 'P20']
+wells_to_zero_forecast = ['P11', 'P13','P15', 'P17', 'P19']
 
 pressure_column = 'Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'
 debit_column = 'Дебит нефти (И), ст.бр/сут'
@@ -73,5 +75,5 @@ plt.grid(True)
 
 # Сохранение графика и результатов
 plt.savefig('zeroed_values_plot.png', dpi=300, bbox_inches='tight')
-df.to_csv('modified_merged_well_data.csv', index=False)
+df.to_csv(data_path, index=False)
 plt.show()
