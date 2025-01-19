@@ -14,7 +14,7 @@ def evaluate_model():
     predictor, dm = create_pipeline()
     
     # Load the best model weights
-    checkpoint_path = 'logs/epoch=496-step=1491.ckpt'  
+    checkpoint_path = 'logs/epoch=467-step=1404.ckpt'  
     predictor.load_model(checkpoint_path)
     
     # Verify model loading
@@ -65,9 +65,9 @@ def evaluate_model():
     
     return predictions_rescaled, targets_rescaled
 
-def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_nodes):
+def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_rescaled, num_nodes):
     stride = 1
-    well_name = 'FY-SF-KP-7-33'
+    well_name = gdm_name
     for node_index in range(num_nodes):
         full_predictions = predictions_rescaled[0]
         full_targets = targets_rescaled[0]
@@ -89,10 +89,19 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
         time_steps = np.arange(full_predictions.shape[0])
 
         # Загрузка данных из CSV файла
-        data = pd.read_csv('modified_merged_well_data.csv')
+        data_path = f'train/{well_name}_merged_well_data.csv'
+        data = pd.read_csv(data_path)
 
-        # Преобразование столбца 'Дата' в формат datetime
-        data['Дата'] = pd.to_datetime(data['Дата'], format='%Y-%m-%d')
+        # Преобразование столбца 'Дата' в формат datetime с обработкой ошибок
+        date_formats = ['%Y-%m-%d', '%d.%m.%Y']
+        for fmt in date_formats:
+            try:
+                data['Дата'] = pd.to_datetime(data['Дата'], format=fmt)
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValueError("None of the date formats matched the data.")
 
         # Фильтрация данных по одной скважине
         well_id = f'P{node_index+1}'
@@ -128,7 +137,7 @@ def plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_n
             pressure_data = np.concatenate([pressure_data, padding])
 
         # Нижний график - забойное давление
-        ax2.plot(dates, pressure_data, label=f'Забойное давление {well_id}')
+        ax2.plot(dates, pressure_data, label=f'Забойное давление')
         ax2.set_xlabel('Дата')
         ax2.set_ylabel('Забойное давление (Фунт-сила / кв.дюйм)')
         ax2.set_title(f'График забойного давления для скважины')
@@ -163,6 +172,7 @@ if __name__ == "__main__":
     
     # Определяем количество узлов (скважин)
     num_nodes = predictions_rescaled.shape[2]
-    
+    gdm_name = 'FN-SS-KP-12-103'
+
     # Строим графики для всех скважин
-    plot_predictions_for_all_wells(predictions_rescaled, targets_rescaled, num_nodes)
+    plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_rescaled, num_nodes)
