@@ -80,7 +80,7 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
     return well_averages
 
 if __name__ == '__main__':
-    gdm_name  = 'FY-SF-KM-1-1'
+    gdm_name  = 'FN-SS-KP-12-103'
     properties = {
         'PORO': f'gdm/{gdm_name}.grdecl', 
         'PERMX': f'gdm/{gdm_name}.grdecl',
@@ -130,7 +130,7 @@ if __name__ == '__main__':
    # Merge the dataframes on the 'Well Name' column
     merged_df = pd.merge(data_df, additional_data_df, on='Well Name', how='inner')
    
-    
+    # Преобразование расчетного дебита, расчетного забойного из одной еденицы в другую
     # Преобразование дебита нефти из м3/сут в баррели/сут
     merged_df['Дебит нефти (И), ст.бр/сут'] = pd.to_numeric(
         merged_df['Дебит нефти, ст.м3/сут'], errors='coerce'
@@ -139,6 +139,14 @@ if __name__ == '__main__':
     merged_df['Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'] = pd.to_numeric(
         merged_df['Забойное давление, Бара'], errors='coerce'
     ) * 14.5038
+    # print(merged_df.columns)
+    if 'Забойное давление, Бара' and 'Дебит нефти, ст.м3/сут' in merged_df.columns:
+        merged_df = merged_df.drop(['Забойное давление, Бара'], axis=1)
+        merged_df = merged_df.drop(['Дебит нефти, ст.м3/сут'], axis=1)
+
+    else:
+        print("Столбец 'Забойное давление, Бара' не найден.")
+    # merged_df=merged_df.drop(['Дебит нефти, ст.м3/сут'])
     # Save the merged DataFrame to a CSV file
     output_merged_file_path = f'train/{gdm_name}_merged_well_data.csv'
     merged_df.to_csv(output_merged_file_path, index=False)
