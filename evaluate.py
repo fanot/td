@@ -14,7 +14,7 @@ def evaluate_model():
     predictor, dm = create_pipeline()
     
     # Load the best model weights
-    checkpoint_path = 'logs/epoch=467-step=1404.ckpt'  
+    checkpoint_path = 'logs/epoch=125-step=378.ckpt'  
     predictor.load_model(checkpoint_path)
     
     # Verify model loading
@@ -68,7 +68,40 @@ def evaluate_model():
 def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_rescaled, num_nodes):
     stride = 1
     well_name = gdm_name
-    for node_index in range(num_nodes):
+    
+    # Загрузка данных из CSV файла
+    data_path = f'train/{well_name}_merged_well_data.csv'
+    data = pd.read_csv(data_path)
+    
+    # Преобразование столбца 'Дата' в формат datetime
+    date_formats = ['%Y-%m-%d', '%d.%m.%Y']
+    for fmt in date_formats:
+        try:
+            data['Дата'] = pd.to_datetime(data['Дата'], format=fmt)
+            break
+        except ValueError:
+            continue
+    
+    # Получаем список скважин и сортируем их
+    unique_wells = sorted(data['Well Name'].unique())
+    # Разделяем на нагнетательные и добывающие
+    inj_wells = sorted([w for w in unique_wells if w.startswith('I')])
+    prod_wells = sorted([w for w in unique_wells if w.startswith('P')])
+    
+    # Объединяем списки в правильном порядке: сначала I, потом P
+    all_wells = inj_wells + prod_wells
+    
+    print(f"Injection wells: {inj_wells}")
+    print(f"Production wells: {prod_wells}")
+    print(f"Total wells in order: {all_wells}")
+    
+    # Обрабатываем все скважины в порядке I, затем P
+    for node_index, well_id in enumerate(all_wells):
+        if node_index >= num_nodes:
+            break
+            
+        print(f"Processing well: {well_id} (node_index: {node_index})")
+        
         full_predictions = predictions_rescaled[0]
         full_targets = targets_rescaled[0]
 
@@ -79,7 +112,7 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
 
         # Находим индекс, где заканчиваются начальные нули
         start_idx = 0
-        while start_idx < len(full_predictions) and full_predictions[start_idx, node_index+2, 0] <= 0:
+        while start_idx < len(full_predictions) and full_predictions[start_idx, node_index, 0] <= 0:
             start_idx += 1
 
         # Обрезаем начальные нули
@@ -87,24 +120,7 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
         full_targets = full_targets[start_idx:]
 
         time_steps = np.arange(full_predictions.shape[0])
-
-        # Загрузка данных из CSV файла
-        data_path = f'train/{well_name}_merged_well_data.csv'
-        data = pd.read_csv(data_path)
-
-        # Преобразование столбца 'Дата' в формат datetime с обработкой ошибок
-        date_formats = ['%Y-%m-%d', '%d.%m.%Y']
-        for fmt in date_formats:
-            try:
-                data['Дата'] = pd.to_datetime(data['Дата'], format=fmt)
-                break
-            except ValueError:
-                continue
-        else:
-            raise ValueError("None of the date formats matched the data.")
-
-        # Фильтрация данных по одной скважине
-        well_id = f'P{node_index+1}'
+        
         filtered_data = data[
             (data['Well Name'] == well_id) & 
             (
@@ -115,64 +131,68 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
 
         # Создаем график с двумя подграфиками
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-        start_date = datetime.datetime(2009, 4, 1)  # Начальная дата 
+        start_date = datetime.datetime(2009, 4, 1)
         dates = [start_date + datetime.timedelta(days=30 * i) for i in range(len(time_steps))]
 
         # Верхний график - исходные значения
-        ax1.plot(dates, full_predictions[:, node_index+2, 0], 'r--', label='Predicted Values')
-        ax1.plot(dates, full_targets[:, node_index+2, 0], 'b-', label='Actual Values')
+        ax1.plot(dates, full_predictions[:, node_index, 0], 'r--', label='Predicted Values')
+        ax1.plot(dates, full_targets[:, node_index, 0], 'b-', label='Actual Values')
 
-        ax1.set_title(f'Rate for Well {node_index+1}')
+        ax1.set_title(f'Rate for Well {well_id}')
         ax1.set_xlabel('Time Steps')
         ax1.set_ylabel('Rate')
         ax1.legend()
         ax1.grid(True)
 
-        # Обрезаем или дополняем данные забойного давления, чтобы длины совпадали
+        # Обработка данных давления
         pressure_data = filtered_data['Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'].values
-        if len(pressure_data) > len(dates):
-            pressure_data = pressure_data[:len(dates)]
-        elif len(pressure_data) < len(dates):
-            padding = np.full(len(dates) - len(pressure_data), pressure_data[-1])
-            pressure_data = np.concatenate([pressure_data, padding])
+        
+        if len(pressure_data) == 0:
+            print(f"No pressure data for well {well_id}")
+            pressure_data = np.zeros(len(dates))
+        else:
+            print(f"Pressure data length for well {well_id}: {len(pressure_data)}")
+            if len(pressure_data) > len(dates):
+                pressure_data = pressure_data[:len(dates)]
+            elif len(pressure_data) < len(dates):
+                padding = np.full(len(dates) - len(pressure_data), pressure_data[-1])
+                pressure_data = np.concatenate([pressure_data, padding])
 
         # Нижний график - забойное давление
         ax2.plot(dates, pressure_data, label=f'Забойное давление')
         ax2.set_xlabel('Дата')
         ax2.set_ylabel('Забойное давление (Фунт-сила / кв.дюйм)')
-        ax2.set_title(f'График забойного давления для скважины')
+        ax2.set_title(f'График забойного давления для скважины {well_id}')
         ax2.legend()
         ax2.grid(True)
 
         plt.tight_layout()
-
-        # Сначала сохраняем
-        plt.savefig(f'{well_name}/well_name_{node_index+1}_prediction.png')
-
-        # Затем показываем
+        
+        # Сохраняем график
+        plt.savefig(f'{well_name}/well_{well_id}_prediction.png')
         plt.show()
-
-        # И закрываем фигуру
         plt.close()
 
+        # Сохраняем результаты в CSV
         results_df = pd.DataFrame({
             'Date': dates,
             'Model': [well_name] * len(dates),   
-            'Well': [f'Well_{node_index+1}'] * len(dates),
-            'Predicted_Rate': full_predictions[:, node_index+2, 0],
-            'Actual_Rate': full_targets[:, node_index+2, 0],
+            'Well': [well_id] * len(dates),
+            'Predicted_Rate': full_predictions[:, node_index, 0],
+            'Actual_Rate': full_targets[:, node_index, 0],
             'Bottom_Hole_Pressure': pressure_data
         })
-
-        # Сохраняем результаты в CSV
-        results_df.to_csv(f'{well_name}/well_{node_index+1}_predictions.csv', index=False)
+        
+        results_df.to_csv(f'{well_name}/well_{well_id}_predictions.csv', index=False)
 
 if __name__ == "__main__":
     predictions_rescaled, targets_rescaled = evaluate_model()
     
     # Определяем количество узлов (скважин)
-    num_nodes = predictions_rescaled.shape[2]
-    gdm_name = 'FN-SS-KP-12-103'
+    num_nodes = predictions_rescaled.shape[2] 
+    print(num_nodes)
+
+    gdm_name = 'FY-SF-KP-7-33'
 
     # Строим графики для всех скважин
     plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_rescaled, num_nodes)
