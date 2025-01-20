@@ -39,14 +39,7 @@ class MultiWellTimeSeriesDataset:
         )
         self.well_coordinates = data.groupby(well_column)[['Initial X', 'Initial Y']].mean()
 
-        # Handle matrix data
-        self.data['PORO'] = self.data['PORO'].apply(self.process_matrix_data)
-        # self.data['INIT_PERMX'] = self.data['INIT_PERMX'].apply(self.process_matrix_data)
 
-        # Assuming data includes node features as part of the dataset
-        feature_columns = ['SOIL'] + ['PORO', 'PERMX']
-        # feature_columns = ['SOIL'] + ['PORO']
-        self.n_channels = len(feature_columns)
 
     def process_matrix_data(self, matrix_str):
         matrix = np.array(eval(matrix_str))
@@ -233,7 +226,7 @@ class TimeThenSpaceModel_Transformer(nn.Module):
     
 def create_pipeline():
     # Load and prepare data
-    well = 'FN-SS-KP-12-103'
+    well = 'FY-SF-KP-7-33'
     data_path = f'train/{well}_merged_well_data.csv'
     data = pd.read_csv(data_path)
     dataset = MultiWellTimeSeriesDataset(data, target_feature='Дебит нефти (И), ст.бр/сут', date_column='Дата')
@@ -268,7 +261,6 @@ def create_pipeline():
     
     # Add this line to setup the datamodule
     dm.setup()
-
     input_size = torch_dataset.n_channels  
     n_nodes = torch_dataset.n_nodes         
     horizon = torch_dataset.horizon         
@@ -285,7 +277,13 @@ def create_pipeline():
     transformer_ff_size = 128
     gnn_kernel = 2
     model = TimeThenSpaceModel_Transformer(input_size, n_nodes, horizon, hidden_size, num_transformer_layers, transformer_ff_size, gnn_kernel)
-
+    # model = TimeThenSpaceModel(input_size=input_size,
+    #                        n_nodes=n_nodes,
+    #                        horizon=horizon,
+    #                        hidden_size=32,
+    #                        rnn_layers=1,
+    #                        gnn_kernel=2)
+    
     # Loss function and metrics
     loss_fn = MaskedMAE()
     metrics = {
