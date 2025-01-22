@@ -1,23 +1,22 @@
-# Oil Well Production Forecasting Model
+# Модель прогнозирования добычи нефти из скважин
 
-## Overview
-This project implements a deep learning model for forecasting oil well production rates using a combination of temporal and spatial features. The model utilizes both transformer architecture and graph neural networks to capture complex relationships between wells and their production patterns.
+## Обзор
+Этот проект реализует модель глубокого обучения для прогнозирования объемов добычи нефти из скважин, используя комбинацию временных и пространственных признаков. Модель использует как архитектуру трансформеров, так и графовые нейронные сети для захвата сложных взаимосвязей между скважинами и их производственными паттернами.
 
-## Features
-- Multi-well time series forecasting
-- Spatial relationship modeling between wells
-- Transformer-based temporal processing
-- Graph neural network for spatial dependencies
-- Support for pressure and rate predictions
-- Data preprocessing and scaling capabilities
-  
-## Models
-epoch=485-step=1458.ckpt - for mod data
-epoch=477-step=1434.ckpt - for initial data
+## Особенности
+- Прогнозирование временных рядов для нескольких скважин
+- Моделирование пространственных взаимосвязей между скважинами
+- Обработка временных данных на основе трансформеров
+- Графовая нейронная сеть для пространственных зависимостей
+- Поддержка прогнозирования давления и объемов добычи
+- Возможности предварительной обработки и масштабирования данных
 
+## Модели
+- `epoch=485-step=1458.ckpt` - для модифицированных данных
+- `epoch=477-step=1434.ckpt` - для исходных данных
 
-## Requirements
-Main dependencies:
+## Требования
+Основные зависимости:
 - torch>=2.5.1
 - torch-geometric>=2.6.1
 - pytorch-lightning>=2.4.0
@@ -26,71 +25,88 @@ Main dependencies:
 - matplotlib>=3.9.2
 - tsl>=2.0
 
-For complete dependencies, see `requirements.txt`.
+Для полного списка зависимостей смотрите `requirements.txt`.
 
-## Installation
+## Установка
 
-1. Create a virtual environment:
+1. Создайте виртуальное окружение:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate  # Для Windows: venv\Scripts\activate
    ```
 
-2. Install dependencies:
+2. Установите зависимости:
    ```bash
    pip install -r requirements.txt
    ```
 
-## Project Structure
-- `train.py` - Main training script and model definitions
-- `evaluate.py` - Evaluation and visualization utilities
-- `mod.py` - Data modification and preprocessing utilities
+## Структура проекта
+- `train.py` - Основной скрипт для обучения и определения модели. Используйте его для тренировки модели на подготовленных данных.
+- `evaluate_for_2_3_task.py` - Скрипт для оценки модели и визуализации результатов. Используйте его для получения прогнозов и построения графиков.
+- `parser.py` - Скрипт для предварительной обработки данных. Используйте его для загрузки и подготовки данных перед обучением.
+- `mod.py` - Скрипт для модификации и предварительной обработки данных. Используйте его для обнуления значений давления и дебита в определенных временных интервалах.
+- `mod.py` - Скрипт для модификации данных. Используйте его для изменения данных перед обучением.
 
-## Usage
+## Использование
 
-1. Data Preparation:
+1. Подготовка данных:
    ```bash
    python parser.py
    ```
+   Этот скрипт загружает данные из CSV-файлов, данные преобразуются в нужный формат и сохраняются в папке traim
+    заменить в строчке ``` gdm_name  = 'FY-SF-KP-7-33'```
+
+
+2. Модификация данных:
    ```bash
    python mod.py
    ```
+   Этот скрипт обнуляет значения давления и дебита для определенных скважин в заданных временных интервалах. Входные данные берутся из подготовленного CSV-файла, и результаты сохраняются обратно в тот же файл.
+    заменить в строчке ``` well = 'FY-SF-KM-1-1'```
 
-3. Training:
+
+3. Обучение модели:
    ```bash
    python train.py
    ```
+   Этот скрипт запускает процесс обучения модели на подготовленных данных. Входные данные берутся из CSV-файла, созданного на предыдущем шаге.
+   заменить в строчке ``` well = 'FY-SF-KM-1-1'```
 
-4. Evaluation:
+4. Оценка модели:
    ```bash
-   python evaluate.py
+   python evaluate_for_2_3_task.py
    ```
+   Этот скрипт загружает обученную модель и визуализирует результаты прогнозирования. Он использует те же данные, что и для обучения, и выводит графики и результаты в виде CSV-файлов.
+    заменить в строках ```gdm_name = 'FY-SF-KM-1-1', model = 'logs/epoch=477-step=1434.ckpt'```
 
-## Model Architecture
-The model combines two main components:
-1. Transformer-based temporal processing
-2. Graph Neural Network for spatial relationships
+## ВНИМАНИЕ
+Если меняете реализацию в python evaluate_for_2_3_task.py, то обязательно заменить и в python train.py, так как оттуда берется построение pipeline 
 
-Key parameters:
-- Input window: 3 time steps
-- Prediction horizon: 12 time steps
-- Hidden size: 32
-- Number of transformer layers: 2
+## Архитектура модели
+Модель сочетает в себе два основных компонента:
+1. Обработка временных данных на основе трансформеров.
+2. Графовая нейронная сеть для пространственных взаимосвязей.
 
-## Data Format
-Input data should be in CSV format with the following columns:
-- Well Name
-- Date
-- Production rates
-- Pressure measurements
-- Well coordinates (X, Y)
+Ключевые параметры:
+- Входное окно: 3 временных шага
+- Горизонт прогнозирования: 12 временных шагов
+- Размер скрытого слоя: 32
+- Количество слоев трансформера: 2
 
-## License
+## Формат данных
+Входные данные должны быть в формате CSV с следующими колонками:
+- Название скважины
+- Дата
+- Объемы добычи
+- Измерения давления
+- Координаты скважины (X, Y)
+
+## Лицензия
 MIT
 
-## Authors
-Karina Yanyshevskaya
+## Авторы
+Карина Янышевская
 
-## Acknowledgments
-- TSL (Torch Spatiotemporal) library
+## Благодарности
+- Библиотека TSL (Torch Spatiotemporal)
 - PyTorch Geometric
