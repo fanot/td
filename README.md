@@ -10,6 +10,10 @@ This project implements a deep learning model for forecasting oil well productio
 - Graph neural network for spatial dependencies
 - Support for pressure and rate predictions
 - Data preprocessing and scaling capabilities
+- 
+## Models
+epoch=485-step=1458.ckpt - for mod data
+
 
 ## Requirements
 Main dependencies:
