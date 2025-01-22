@@ -34,12 +34,12 @@ class MultiWellTimeSeriesDataset:
         # Modified date parsing with format='mixed' and dayfirst=True
         self.data[self.date_column] = pd.to_datetime(
             self.data[self.date_column], 
-            format='mixed',  # Allow mixed date formats
-            dayfirst=True    # Specify that day comes before month
+            format='mixed', 
+            dayfirst=True   
         )
         self.well_coordinates = data.groupby(well_column)[['Initial X', 'Initial Y']].mean()
 
-
+      
 
     def process_matrix_data(self, matrix_str):
         matrix = np.array(eval(matrix_str))
@@ -226,7 +226,7 @@ class TimeThenSpaceModel_Transformer(nn.Module):
     
 def create_pipeline():
     # Load and prepare data
-    well = 'FY-SF-KP-7-33'
+    well = 'FY-SF-KM-1-1'
     data_path = f'train/{well}_merged_well_data.csv'
     data = pd.read_csv(data_path)
     dataset = MultiWellTimeSeriesDataset(data, target_feature='Дебит нефти (И), ст.бр/сут', date_column='Дата')
