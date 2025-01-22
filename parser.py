@@ -80,7 +80,7 @@ def average_around_well_coordinates(poro_grid, wells_data, dim_x, dim_y, dim_z, 
     return well_averages
 
 if __name__ == '__main__':
-    gdm_name  = 'FN-SS-KP-12-103'
+    gdm_name  = 'FY-SF-KP-7-33'
     properties = {
         'PORO': f'gdm/{gdm_name}.grdecl', 
         'PERMX': f'gdm/{gdm_name}.grdecl',
@@ -147,7 +147,6 @@ if __name__ == '__main__':
     else:
         print("Столбец 'Забойное давление, Бара' не найден.")
     # merged_df=merged_df.drop(['Дебит нефти, ст.м3/сут'])
-    # Save the merged DataFrame to a CSV file
     output_merged_file_path = f'train/{gdm_name}_merged_well_data.csv'
     merged_df.to_csv(output_merged_file_path, index=False)
 
