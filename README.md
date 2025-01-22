@@ -10,7 +10,7 @@ This project implements a deep learning model for forecasting oil well productio
 - Graph neural network for spatial dependencies
 - Support for pressure and rate predictions
 - Data preprocessing and scaling capabilities
-- 
+  
 ## Models
 epoch=485-step=1458.ckpt - for mod data
 epoch=477-step=1434.ckpt - for initial data
@@ -50,15 +50,18 @@ For complete dependencies, see `requirements.txt`.
 
 1. Data Preparation:
    ```bash
+   python parser.py
+   ```
+   ```bash
    python mod.py
    ```
 
-2. Training:
+3. Training:
    ```bash
    python train.py
    ```
 
-3. Evaluation:
+4. Evaluation:
    ```bash
    python evaluate.py
    ```
@@ -86,7 +89,7 @@ Input data should be in CSV format with the following columns:
 MIT
 
 ## Authors
-[Karina Yanyshevskaya]
+Karina Yanyshevskaya
 
 ## Acknowledgments
 - TSL (Torch Spatiotemporal) library
