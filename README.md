@@ -13,6 +13,7 @@ This project implements a deep learning model for forecasting oil well productio
 - 
 ## Models
 epoch=485-step=1458.ckpt - for mod data
+epoch=477-step=1434.ckpt - for initial data
 
 
 ## Requirements
