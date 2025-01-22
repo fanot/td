@@ -9,12 +9,12 @@ import datetime
 from tqdm import tqdm
 
 
-def evaluate_model():
+def evaluate_model(model):
     # Create model and data module
     predictor, dm = create_pipeline()
     
     # Load the best model weights
-    checkpoint_path = 'logs/epoch=125-step=378.ckpt'  
+    checkpoint_path = model
     predictor.load_model(checkpoint_path)
     
     # Verify model loading
@@ -32,20 +32,13 @@ def evaluate_model():
     targets = []
     
     for batch in test_dataloader:
-        x = batch.input['x']  # Input data [b, t=3, n, f]
-        y = batch.target['y']  # Target data [b, t=12, n, f]
+        x = batch.input['x']  
+        y = batch.target['y']  
         edge_index = batch.input['edge_index']
         edge_weight = batch.input['edge_weight']
         
-        print(f"Input tensor shape: {x.shape}")
         
-        # x_with_pressure = x.clone()  
-        
-        # # Setting zero pressure for half of the wells
-        # num_nodes = x_with_pressure.shape[2]
-        # zero_pressure_wells = list(range(num_nodes//2))
-        # x_with_pressure[:, :, zero_pressure_wells] = 0  # Зануляем значения для половины скважин
-        
+   
         with torch.no_grad():
             y_hat = predictor.model(x, edge_index, edge_weight)
         predictions.append(y_hat.cpu().numpy())
@@ -110,15 +103,7 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
             full_predictions = np.concatenate((full_predictions, predictions_rescaled[i][-stride:, :, :]), axis=0)
             full_targets = np.concatenate((full_targets, targets_rescaled[i][-stride:, :, :]), axis=0)
 
-        # Находим индекс, где заканчиваются начальные нули
-        start_idx = 0
-        while start_idx < len(full_predictions) and full_predictions[start_idx, node_index, 0] <= 0:
-            start_idx += 1
-
-        # Обрезаем начальные нули
-        full_predictions = full_predictions[start_idx:]
-        full_targets = full_targets[start_idx:]
-
+       
         time_steps = np.arange(full_predictions.shape[0])
         
         filtered_data = data[
@@ -144,19 +129,14 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
         ax1.legend()
         ax1.grid(True)
 
-        # Обработка данных давления
         pressure_data = filtered_data['Забойное давление (И), Фунт-сила / кв.дюйм (абс.)'].values
+        pressure_data = np.concatenate(([0], pressure_data))
         
-        if len(pressure_data) == 0:
-            print(f"No pressure data for well {well_id}")
-            pressure_data = np.zeros(len(dates))
-        else:
-            print(f"Pressure data length for well {well_id}: {len(pressure_data)}")
-            if len(pressure_data) > len(dates):
-                pressure_data = pressure_data[:len(dates)]
-            elif len(pressure_data) < len(dates):
-                padding = np.full(len(dates) - len(pressure_data), pressure_data[-1])
-                pressure_data = np.concatenate([pressure_data, padding])
+        if len(pressure_data) > len(dates):
+            pressure_data = pressure_data[:len(dates)]
+        elif len(pressure_data) < len(dates):
+            padding = np.full(len(dates) - len(pressure_data), pressure_data[-1])
+            pressure_data = np.concatenate([pressure_data, padding])
 
         # Нижний график - забойное давление
         ax2.plot(dates, pressure_data, label=f'Забойное давление')
@@ -186,13 +166,10 @@ def plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_resca
         results_df.to_csv(f'{well_name}/well_{well_id}_predictions.csv', index=False)
 
 if __name__ == "__main__":
-    predictions_rescaled, targets_rescaled = evaluate_model()
-    
-    # Определяем количество узлов (скважин)
+    model = 'logs/epoch=477-step=1434.ckpt'  
+    gdm_name = 'FY-SF-KM-1-1'
+    predictions_rescaled, targets_rescaled = evaluate_model(model)
     num_nodes = predictions_rescaled.shape[2] 
-    print(num_nodes)
-
-    gdm_name = 'FY-SF-KP-7-33'
 
     # Строим графики для всех скважин
     plot_predictions_for_all_wells(gdm_name, predictions_rescaled, targets_rescaled, num_nodes)
