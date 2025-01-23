@@ -64,7 +64,7 @@ def evaluate_model_for_2020():
     predictions = []
     current_input = None
 
-    for step in tqdm(range(365)):  # 365 days in 2020
+    for step in tqdm(range(12)):  
         if step == 0:
             # Use the real data from the last available point
             batch = next(iter(test_dataloader))
