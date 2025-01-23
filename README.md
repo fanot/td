@@ -73,7 +73,7 @@
 
 4. Оценка модели:
    ```bash
-   python evaluate_for_2_3_task.py
+   python evaluate.py
    ```
    Этот скрипт загружает обученную модель и визуализирует результаты прогнозирования. 
     заменить в строках ```gdm_name = 'FY-SF-KM-1-1', model = 'logs/epoch=477-step=1434.ckpt'```
