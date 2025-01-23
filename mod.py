@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # Чтение файла
 gdm_name = 'FY-SF-KM-1-1'
-data_path = f'train/{well}_merged_well_data.csv'
+data_path = f'train/{gdm_name}_merged_well_data.csv'
 df = pd.read_csv(data_path)
 
 # Преобразуем даты в datetime формат
