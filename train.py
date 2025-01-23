@@ -226,7 +226,7 @@ class TimeThenSpaceModel_Transformer(nn.Module):
     
 def create_pipeline():
     # Load and prepare data
-    well = 'FY-SF-KM-1-1'
+    gdm_name = 'FY-SF-KM-1-1'
     data_path = f'train/{well}_merged_well_data.csv'
     data = pd.read_csv(data_path)
     dataset = MultiWellTimeSeriesDataset(data, target_feature='Дебит нефти (И), ст.бр/сут', date_column='Дата')
