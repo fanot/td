@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Чтение файла
-well = 'FY-SF-KM-1-1'
+gdm_name = 'FY-SF-KM-1-1'
 data_path = f'train/{well}_merged_well_data.csv'
 df = pd.read_csv(data_path)
 
