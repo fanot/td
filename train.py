@@ -30,6 +30,11 @@ class MultiWellTimeSeriesDataset:
         self.well_column = well_column
         self.date_column = date_column
         self.n_nodes = data[well_column].nunique()
+        
+        # Get all numeric columns except well and date columns
+        numeric_cols = data.select_dtypes(include=['float64', 'int64']).columns
+        self.feature_columns = [col for col in numeric_cols if col not in [well_column, date_column]]
+        self.n_channels = len(self.feature_columns)
 
         # Modified date parsing with format='mixed' and dayfirst=True
         self.data[self.date_column] = pd.to_datetime(
@@ -38,8 +43,6 @@ class MultiWellTimeSeriesDataset:
             dayfirst=True   
         )
         self.well_coordinates = data.groupby(well_column)[['Initial X', 'Initial Y']].mean()
-
-      
 
     def process_matrix_data(self, matrix_str):
         matrix = np.array(eval(matrix_str))
@@ -76,15 +79,31 @@ class MultiWellTimeSeriesDataset:
             return torch.tensor(edge_index.T, dtype=torch.int64), torch.tensor(weights, dtype=torch.float32)
         elif layout == "adjacency":
             return connectivity if not use_weights else (connectivity, edge_weights)
+
     def get_target_dataframe(self):
-        target_df = self.data.pivot(index=self.date_column, columns=self.well_column, values=self.target_feature)
-        target_df.fillna(0, inplace=True)
+        # Create a dataframe with all features
+        all_features = []
+        for feature in self.feature_columns:
+            feature_df = self.data.pivot(index=self.date_column, columns=self.well_column, values=feature)
+            feature_df = feature_df.ffill().bfill().fillna(0)
+            all_features.append(feature_df)
+        
+        # Stack all features for each well
+        target_df = pd.concat(all_features, axis=1)
         return target_df
 
     def infer_mask(self, infer_from='next'):
-        df = self.get_target_dataframe()
-        mask = (~df.isna()).astype('uint8')
-        eval_mask = pd.DataFrame(index=mask.index, columns=mask.columns, data=0).astype('uint8')
+        df = self.data
+        # Create mask for all features
+        all_masks = []
+        for feature in self.feature_columns:
+            feature_df = df.pivot(index=self.date_column, columns=self.well_column, values=feature)
+            mask = (~feature_df.isna()).astype('uint8')
+            all_masks.append(mask)
+        
+        # Combine masks for all features
+        combined_mask = pd.concat(all_masks, axis=1)
+        eval_mask = pd.DataFrame(index=combined_mask.index, columns=combined_mask.columns, data=0).astype('uint8')
         
         if infer_from == 'previous':
             offset = -1
@@ -93,7 +112,7 @@ class MultiWellTimeSeriesDataset:
         else:
             raise ValueError(f'`infer_from` can only be one of {["previous", "next"]}')
 
-        months = sorted(set(zip(mask.index.year, mask.index.month)))
+        months = sorted(set(zip(combined_mask.index.year, combined_mask.index.month)))
 
         for i in range(len(months)):
             j = (i + offset) % len(months)
@@ -103,8 +122,8 @@ class MultiWellTimeSeriesDataset:
             if pd.isnull(year_i) or pd.isnull(year_j) or pd.isnull(month_i) or pd.isnull(month_j):
                 continue
 
-            cond_j = (mask.index.year == year_j) & (mask.index.month == month_j)
-            mask_j = mask[cond_j]
+            cond_j = (combined_mask.index.year == year_j) & (combined_mask.index.month == month_j)
+            mask_j = combined_mask[cond_j]
             offset_i = 12 * (year_i - year_j) + (month_i - month_j)
 
             if pd.isnull(offset_i):
@@ -112,8 +131,8 @@ class MultiWellTimeSeriesDataset:
 
             mask_i = mask_j.shift(1, pd.DateOffset(months=int(offset_i)))
             mask_i = mask_i[~mask_i.index.duplicated(keep='first')]
-            mask_i = mask_i.reindex(mask.index, fill_value=0)
-            eval_mask |= (~mask_i & mask).astype('uint8')
+            mask_i = mask_i.reindex(combined_mask.index, fill_value=0)
+            eval_mask |= (~mask_i & combined_mask).astype('uint8')
 
         return eval_mask
 
@@ -173,28 +192,28 @@ class TimeThenSpaceModel_Transformer(nn.Module):
         self.rearrange = Rearrange('b (t n f) -> b t n f', t=horizon, n=n_nodes, f=input_size)
 
     def forward(self, x, edge_index, edge_weight):
-        # print(f"Input x shape: {x.shape}")  # [6, 3, 30, 1]
+        # print(f"Input x shape: {x.shape}")  
         x_enc = self.encoder(x)
-        # print(f"Encoded x shape: {x_enc.shape}")  # [6, 3, 30, 32]
+        # print(f"Encoded x shape: {x_enc.shape}")  
 
         # Создание и подгонка размеров узловых встраиваний
-        node_indices = torch.arange(x.size(2), device=x.device)  # [30]
-        node_emb = self.node_embeddings(node_indices)  # [30, 32]
+        node_indices = torch.arange(x.size(2), device=x.device)  # 
+        node_emb = self.node_embeddings(node_indices)  
         # Подгоняем размерности node_emb для совпадения с размерами x_enc
-        node_emb = node_emb.unsqueeze(0).unsqueeze(0)  # [1, 1, 30, 32]
-        node_emb = node_emb.expand(x.size(0), x.size(1), -1, -1)  # [6, 3, 30, 32]
+        node_emb = node_emb.unsqueeze(0).unsqueeze(0)  
+        node_emb = node_emb.expand(x.size(0), x.size(1), -1, -1)  
         # print(f"Node embeddings shape: {node_emb.shape}")
 
         x_emb = x_enc + node_emb
-        # print(f"Combined embeddings shape: {x_emb.shape}")  # [6, 3, 30, 32]
+        # print(f"Combined embeddings shape: {x_emb.shape}") 
 
         # Плоское педставление для Transformer
-        x_emb_flat = x_emb.view(x.size(0), -1, x_emb.size(-1))  # [6, 90, 32]
+        x_emb_flat = x_emb.view(x.size(0), -1, x_emb.size(-1))  
         # print(f"Flattened input to Transformer shape: {x_emb_flat.shape}")
 
         h = self.time_nn(x_emb_flat)
         h = h.view(x.size(0), x.size(1), x.size(2), -1)
-        # print(f"Output from Transformer shape: {h.shape}")  # [6, 3, 30, 32]
+        # print(f"Output from Transformer shape: {h.shape}") 
 
         if edge_index is not None:
             h = h.view(-1, h.size(-1))  # [batch_size*time_steps*nodes, features]
@@ -204,18 +223,18 @@ class TimeThenSpaceModel_Transformer(nn.Module):
             z = h  # Если нет структуры графа
 
         # Теперь z имеет размер [6, 3, 30, 32]
-        z_flat = z.view(z.size(0), z.size(1) * z.size(2) * z.size(3))  # [6, 2880]
-        # print(f"Flattened output for Decoder shape: {z_flat.shape}")  # [6, 2880]
+        z_flat = z.view(z.size(0), z.size(1) * z.size(2) * z.size(3))  
+        # print(f"Flattened output for Decoder shape: {z_flat.shape}")  
 
         # Исправление: убедимся, что размерности перед декодером правильные
-        z_flat_correct = z.view(z.size(0), -1)[:, :self.hidden_size * self.n_nodes]  # [6, 960]
-        # print(f"Reshaped for Decoder shape: {z_flat_correct.shape}")  # [6, 960]
+        z_flat_correct = z.view(z.size(0), -1)[:, :self.hidden_size * self.n_nodes] 
+        # print(f"Reshaped for Decoder shape: {z_flat_correct.shape}")  
 
         x_out = self.decoder(z_flat_correct)
-        # print(f"Output from Decoder shape: {x_out.shape}")  # [6, 360]
+        # print(f"Output from Decoder shape: {x_out.shape}")  
 
         x_horizon = self.rearrange(x_out)
-        # print(f"Final output shape: {x_horizon.shape}")  # [6, 12, 30, 1]
+        # print(f"Final output shape: {x_horizon.shape}")  
 
         return x_horizon
 
